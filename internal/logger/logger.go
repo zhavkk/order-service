@@ -1,9 +1,10 @@
-// Package logger предоставляет функции для инициализации и использования логгера в приложении.
 package logger
 
 import (
 	"log/slog"
 	"os"
+
+	colorlogger "github.com/zhavkk/L0-test-service/pkg/logger"
 )
 
 var Log *slog.Logger
@@ -15,14 +16,18 @@ const (
 )
 
 func Init(env string) {
+	var handler slog.Handler
+
 	switch env {
 	case envLocal:
-		Log = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		handler = colorlogger.NewColorHandler(slog.LevelDebug)
 	case envDev:
-		Log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
 	case envProd:
-		Log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
 	default:
-		Log = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
 	}
+
+	Log = slog.New(handler)
 }

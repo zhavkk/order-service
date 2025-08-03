@@ -13,4 +13,5 @@ type App struct {
 func NewApp(cfg *config.Config) (*App, error) {
 	logger.Log.Info("Initializing application", "env", cfg.Env)
 
+	return nil, nil
 }
