@@ -21,7 +21,7 @@ const (
 func levelColor(level slog.Level) string {
 	switch level {
 	case slog.LevelDebug:
-		return cyan
+		return magenta
 	case slog.LevelInfo:
 		return green
 	case slog.LevelWarn:
@@ -61,7 +61,7 @@ func (h *ColorHandler) Handle(_ context.Context, r slog.Record) error {
 
 	b.WriteString(reset)
 
-	fmt.Fprintln(os.Stdout, b.String())
+	_, _ = fmt.Fprintln(os.Stdout, b.String())
 	return nil
 }
 

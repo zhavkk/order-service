@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"os"
 
-	colorlogger "github.com/zhavkk/L0-test-service/pkg/logger"
+	colorlogger "github.com/zhavkk/order-service/pkg/colorLogger"
 )
 
 var Log *slog.Logger

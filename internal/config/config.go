@@ -33,6 +33,10 @@ type RedisConfig struct {
 	Port string `env:"REDIS_PORT" envDefault:"6379"`
 }
 
+func (r RedisConfig) Addr() string {
+	return fmt.Sprintf("%s:%s", r.Host, r.Port)
+}
+
 func (c PostgresConfig) DSN() string {
 	return fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=%s",

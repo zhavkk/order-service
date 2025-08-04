@@ -1,9 +1,9 @@
 package app
 
 import (
-	httpapp "github.com/zhavkk/L0-test-service/internal/app/http"
-	"github.com/zhavkk/L0-test-service/internal/config"
-	"github.com/zhavkk/L0-test-service/internal/logger"
+	httpapp "github.com/zhavkk/order-service/internal/app/http"
+	"github.com/zhavkk/order-service/internal/config"
+	"github.com/zhavkk/order-service/internal/logger"
 )
 
 type App struct {

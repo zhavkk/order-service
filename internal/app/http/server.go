@@ -7,8 +7,8 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/zhavkk/L0-test-service/internal/config"
-	"github.com/zhavkk/L0-test-service/internal/logger"
+	"github.com/zhavkk/order-service/internal/config"
+	"github.com/zhavkk/order-service/internal/logger"
 )
 
 type HTTPApp struct {
