@@ -2,14 +2,11 @@ package postgres
 
 import (
 	"github.com/zhavkk/order-service/internal/models"
-	"github.com/zhavkk/order-service/pkg/cache"
 	"github.com/zhavkk/order-service/pkg/pgstorage"
 )
 
 type OrderRepository struct {
 	storage *pgstorage.Storage
-
-	cache cache.Cache
 }
 
 func NewOrderRepository(storage *pgstorage.Storage) *OrderRepository {

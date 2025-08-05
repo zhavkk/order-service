@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )
@@ -13,6 +14,7 @@ type Config struct {
 	HTTP     HTTPConfig     `yaml:"http"`
 	Postgres PostgresConfig `yaml:"postgres"`
 	Redis    RedisConfig    `yaml:"redis"`
+	Kafka    KafkaConfig    `yaml:"kafka"`
 }
 
 type HTTPConfig struct {
@@ -31,6 +33,11 @@ type PostgresConfig struct {
 type RedisConfig struct {
 	Host string `env:"REDIS_HOST" envDefault:"localhost"`
 	Port string `env:"REDIS_PORT" envDefault:"6379"`
+}
+
+type KafkaConfig struct {
+	Version            string        `yaml:"version" env:"KAFKA_VERSION" env-default:"2.8.0"`
+	AutoCommitInterval time.Duration `yaml:"auto_commit_interval" env:"KAFKA_AUTO_COMMIT_INTERVAL" env-default:"1s"`
 }
 
 func (r RedisConfig) Addr() string {
