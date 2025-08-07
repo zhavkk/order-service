@@ -9,3 +9,7 @@ type GetOrderByIDRequest struct {
 type GetOrderByIDResponse struct {
 	Order *models.Order `json:"order"`
 }
+
+type ProcessOrderRequest struct {
+	Order *models.Order `json:"order"`
+}

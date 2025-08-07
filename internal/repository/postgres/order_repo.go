@@ -19,8 +19,8 @@ func NewOrderRepository(storage *pgstorage.Storage) *OrderRepository {
 	}
 }
 
-func (r *OrderRepository) GetFullOrderByID(ctx context.Context, orderID string) (*models.FullOrder, error) {
-	var fo models.FullOrder
+func (r *OrderRepository) GetOrderByID(ctx context.Context, orderID string) (*models.Order, error) {
+	var fo models.Order
 	orderQ := `
         SELECT order_uid, track_number, entry, locale, internal_signature, customer_id,
                delivery_service, shardkey, sm_id, date_created, oof_shard
@@ -30,10 +30,10 @@ func (r *OrderRepository) GetFullOrderByID(ctx context.Context, orderID string) 
 	err := r.storage.GetPool().
 		QueryRow(ctx, orderQ, orderID).
 		Scan(
-			&fo.Order.OrderUID, &fo.Order.TrackNumber, &fo.Order.Entry,
-			&fo.Order.Locale, &fo.Order.InternalSignature, &fo.Order.CustomerID,
-			&fo.Order.DeliveryService, &fo.Order.ShardKey, &fo.Order.SmID,
-			&fo.Order.DateCreated, &fo.Order.OofShard,
+			&fo.OrderUID, &fo.TrackNumber, &fo.Entry,
+			&fo.Locale, &fo.InternalSignature, &fo.CustomerID,
+			&fo.DeliveryService, &fo.ShardKey, &fo.SmID,
+			&fo.DateCreated, &fo.OofShard,
 		)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -103,32 +103,22 @@ func (r *OrderRepository) GetFullOrderByID(ctx context.Context, orderID string) 
 	return &fo, nil
 }
 
-func (r *OrderRepository) GetByID(orderID string) (*models.Order, error) {
-	query := `SELECT * FROM orders WHERE order_uid = $1`
-	row := r.storage.GetPool().QueryRow(context.Background(), query, orderID)
-	var order models.Order
-	err := row.Scan(&order.OrderUID, &order.TrackNumber, &order.Entry, &order.DeliveryService,
-		&order.ShardKey, &order.SmID, &order.DateCreated, &order.OofShard)
-	if err != nil {
-		return nil, err
-	}
-	return &order, nil
-}
+func (r *OrderRepository) CreateOrder(ctx context.Context, order *models.Order) error {
+	query := `
+	INSERT INTO orders (
+        order_uid, track_number, entry, locale, internal_signature, customer_id,
+        delivery_service, shardkey, sm_id, date_created, oof_shard
+    ) VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
+    )`
 
-func (r *OrderRepository) CreateOrder(order *models.Order) error {
-	query := `INSERT INTO orders (order_uid, track_number, entry, delivery_service, shardkey, sm_id, date_created, oof_shard)
-	 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
-	tx, ok := pgstorage.GetTxFromContext(context.Background())
+	tx, ok := pgstorage.GetTxFromContext(ctx)
 	if !ok {
 		return ErrNoTransaction
 	}
-	_, err := tx.Exec(context.Background(), query,
-		order.OrderUID, order.TrackNumber, order.Entry, order.DeliveryService, order.ShardKey,
-		order.SmID, order.DateCreated, order.OofShard,
+	_, err := tx.Exec(ctx, query,
+		order.OrderUID, order.TrackNumber, order.Entry, order.Locale, order.InternalSignature, order.CustomerID,
+		order.DeliveryService, order.ShardKey, order.SmID, order.DateCreated, order.OofShard,
 	)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }

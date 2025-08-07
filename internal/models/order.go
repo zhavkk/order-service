@@ -60,10 +60,3 @@ type Delivery struct {
 	Region  string `json:"region" db:"region"`
 	Email   string `json:"email" db:"email"`
 }
-
-type FullOrder struct {
-	Order    `json:"order"`
-	Delivery `json:"delivery"`
-	Payment  `json:"payment"`
-	Items    []Item `json:"items"`
-}

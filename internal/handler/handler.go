@@ -8,6 +8,8 @@ import (
 
 type OrderService interface {
 	GetByID(ctx context.Context, req *dto.GetOrderByIDRequest) (*dto.GetOrderByIDResponse, error)
+	ProcessMessage(ctx context.Context, message []byte) error
+	ProcessOrder(ctx context.Context, req *dto.ProcessOrderRequest) error
 }
 
 type Handler struct {
