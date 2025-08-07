@@ -37,6 +37,7 @@ type Item struct {
 
 type Payment struct {
 	Transaction  string `json:"transaction" db:"transaction"`
+	OrderID      string `json:"order_id" db:"order_id"`
 	RequestID    string `json:"request_id" db:"request_id"`
 	Currency     string `json:"currency" db:"currency"`
 	Provider     string `json:"provider" db:"provider"`
@@ -58,4 +59,11 @@ type Delivery struct {
 	Address string `json:"address" db:"address"`
 	Region  string `json:"region" db:"region"`
 	Email   string `json:"email" db:"email"`
+}
+
+type FullOrder struct {
+	Order    `json:"order"`
+	Delivery `json:"delivery"`
+	Payment  `json:"payment"`
+	Items    []Item `json:"items"`
 }

@@ -8,7 +8,8 @@ import (
 )
 
 type OrderRepository interface {
-	GetOrderByID(ctx context.Context, orderID string) (*models.Order, error)
+	GetFullOrderByID(ctx context.Context, orderID string) (*models.Order, error)
+	GetByID(ctx context.Context, orderID string) (*models.Order, error)
 	CreateOrder(ctx context.Context, order *models.Order) error
 }
 
