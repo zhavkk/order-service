@@ -19,7 +19,12 @@ func NewItemRepository(storage *pgstorage.Storage) *ItemRepository {
 }
 
 func (r *ItemRepository) GetItemsByOrderID(ctx context.Context, orderID string) ([]*models.Item, error) {
-	query := `SELECT * FROM items WHERE order_id = $1`
+	query := `
+        SELECT item_id, order_uid, chrt_id, track_number, price, rid, name,
+               sale, size, total_price, nm_id, brand, status
+        FROM items
+        WHERE order_uid = $1
+    `
 	rows, err := r.storage.GetPool().Query(ctx, query, orderID)
 	if err != nil {
 		return nil, err
@@ -46,7 +51,7 @@ func (r *ItemRepository) GetItemsByOrderID(ctx context.Context, orderID string) 
 
 func (r *ItemRepository) AddItems(ctx context.Context, orderID string, items []*models.Item) error {
 	const op = "ItemRepository.AddItemsToOrder"
-	query := `INSERT INTO items (order_id, chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status)
+	query := `INSERT INTO items (order_uid, chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status)
 	 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
 
 	tx, ok := pgstorage.GetTxFromContext(ctx)
@@ -54,7 +59,9 @@ func (r *ItemRepository) AddItems(ctx context.Context, orderID string, items []*
 		logger.Log.Error(op, "No transaction found in context", nil)
 		return ErrNoTransaction
 	}
-
+	if _, err := tx.Exec(ctx, `DELETE FROM items WHERE order_uid = $1`, orderID); err != nil {
+		return err
+	}
 	for _, item := range items {
 		_, err := tx.Exec(ctx, query,
 			orderID,
@@ -73,10 +80,10 @@ func (r *ItemRepository) AddItems(ctx context.Context, orderID string, items []*
 		if err != nil {
 			return err
 		}
-		logger.Log.Info(op, "Item added successfully, order_id: ", orderID, "item_id", item.ID)
+		logger.Log.Info(op, "Item added successfully, order_uid: ", orderID, "item_id", item.ID)
 	}
 
-	logger.Log.Info(op, "All items added successfully to order, order_id: ", orderID)
+	logger.Log.Info(op, "All items added successfully to order, order_uid: ", orderID)
 
 	return nil
 }

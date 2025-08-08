@@ -68,6 +68,6 @@ CREATE INDEX idx_orders_order_uid ON orders(order_uid);
 -- +goose StatementBegin
 DROP TABLE IF EXISTS items;
 DROP TABLE IF EXISTS payments;
-DROP TABLE IF EXISTS deliveries;
+DROP TABLE IF EXISTS delivery;
 DROP TABLE IF EXISTS orders;
 -- +goose StatementEnd

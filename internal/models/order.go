@@ -18,10 +18,9 @@ type Order struct {
 	DateCreated       time.Time `json:"date_created" db:"date_created"`
 	OofShard          string    `json:"oof_shard" db:"oof_shard"`
 }
-
 type Item struct {
-	ID          string `json:"id" db:"id"`
-	OrderID     string `json:"order_id" db:"order_id"`
+	ID          int    `json:"id" db:"item_id"`
+	OrderID     string `json:"order_id" db:"order_uid"`
 	ChrtID      int64  `json:"chrt_id" db:"chrt_id"`
 	TrackNumber string `json:"track_number" db:"track_number"`
 	Price       int    `json:"price" db:"price"`
@@ -37,7 +36,7 @@ type Item struct {
 
 type Payment struct {
 	Transaction  string `json:"transaction" db:"transaction"`
-	OrderID      string `json:"order_id" db:"order_id"`
+	OrderID      string `json:"order_id" db:"order_uid"`
 	RequestID    string `json:"request_id" db:"request_id"`
 	Currency     string `json:"currency" db:"currency"`
 	Provider     string `json:"provider" db:"provider"`
@@ -50,8 +49,8 @@ type Payment struct {
 }
 
 type Delivery struct {
-	ID      string `json:"id" db:"id"`
-	OrderID string `json:"order_id" db:"order_id"`
+	ID      int    `json:"id" db:"delivery_id"`
+	OrderID string `json:"order_id" db:"order_uid"`
 	Name    string `json:"name" db:"name"`
 	Phone   string `json:"phone" db:"phone"`
 	Zip     string `json:"zip" db:"zip"`

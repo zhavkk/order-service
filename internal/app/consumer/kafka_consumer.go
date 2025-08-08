@@ -60,6 +60,7 @@ func (kc *KafkaConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 	for message := range claim.Messages() {
 		if err := kc.handler(message.Value); err != nil {
 			logger.Log.Error("Error handling message", "error", err, "message", string(message.Value))
+			continue
 		}
 		session.MarkMessage(message, "")
 	}

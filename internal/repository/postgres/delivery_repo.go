@@ -19,10 +19,23 @@ func NewDeliveryRepository(storage *pgstorage.Storage) *DeliveryRepository {
 }
 
 func (r *DeliveryRepository) GetDeliveryByOrderID(ctx context.Context, orderID string) (*models.Delivery, error) {
-	query := `SELECT * FROM deliveries WHERE order_id = $1`
+	query := `
+        SELECT delivery_id, order_uid, name, phone, zip, city, address, region, email
+        FROM delivery
+        WHERE order_uid = $1
+    `
 	var delivery models.Delivery
-	err := r.storage.GetPool().QueryRow(ctx, query, orderID).Scan(&delivery.ID,
-		&delivery.OrderID, &delivery.Address)
+	err := r.storage.GetPool().QueryRow(ctx, query, orderID).Scan(
+		&delivery.ID,
+		&delivery.OrderID,
+		&delivery.Name,
+		&delivery.Phone,
+		&delivery.Zip,
+		&delivery.City,
+		&delivery.Address,
+		&delivery.Region,
+		&delivery.Email,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +44,7 @@ func (r *DeliveryRepository) GetDeliveryByOrderID(ctx context.Context, orderID s
 
 func (r *DeliveryRepository) CreateDelivery(ctx context.Context, delivery *models.Delivery) error {
 	const op = "DeliveryRepository.CreateDelivery"
-	query := `INSERT INTO deliveries (order_id, name, phone, zip, city, address, region, email)
+	query := `INSERT INTO delivery (order_uid, name, phone, zip, city, address, region, email)
 	 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
 
 	tx, ok := pgstorage.GetTxFromContext(ctx)
@@ -47,6 +60,6 @@ func (r *DeliveryRepository) CreateDelivery(ctx context.Context, delivery *model
 		return err
 	}
 
-	logger.Log.Info(op, "Delivery created successfully, order_id: ", delivery.OrderID)
+	logger.Log.Info(op, "Delivery created successfully, order_uid: ", delivery.OrderID)
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 
 	"time"
 
+	"github.com/go-playground/validator"
 	"github.com/zhavkk/order-service/internal/dto"
 	"github.com/zhavkk/order-service/internal/logger"
 	"github.com/zhavkk/order-service/internal/models"
@@ -63,85 +64,63 @@ func NewOrderService(
 		cacheTTL:     cacheTTL,
 	}
 }
-
-func (s *OrderService) GetOrderByID(ctx context.Context,
-	req *dto.GetOrderByIDRequest,
-) (*dto.GetOrderByIDResponse, error) {
-
-	const op = "OrderService.GetOrderByID"
-
-	logger.Log.Info(op, "Fetching order by ID : ", req.OrderID)
-
-	order, err := s.orderRepo.GetOrderByID(ctx, req.OrderID)
-	if err != nil {
-		logger.Log.Error(op, "Failed to get order", err)
-		return nil, err
-	}
-
-	return &dto.GetOrderByIDResponse{
-		Order: order,
-	}, nil
-}
-
 func (s *OrderService) ProcessMessage(ctx context.Context, message []byte) error {
 	const op = "OrderService.ProcessMessage"
-
 	logger.Log.Info(op, "Processing message from Kafka", nil)
 
-	var order models.Order
-	if err := json.Unmarshal(message, &order); err != nil {
+	var in dto.OrderRequest
+	if err := json.Unmarshal(message, &in); err != nil {
 		logger.Log.Error(op, "Failed to unmarshal order", err)
 		return nil
 	}
 
-	if order.OrderUID == "" || len(order.Items) == 0 {
-		logger.Log.Warn("Invalid order data", "order", order)
+	if err := validator.New().Struct(in); err != nil {
+		logger.Log.Warn(op, "Invalid order DTO ", err)
 		return nil
 	}
 
-	return s.ProcessOrder(ctx, &dto.ProcessOrderRequest{
-		Order: &order,
-	})
+	return s.ProcessOrder(ctx, &dto.ProcessOrderRequest{Order: in})
 }
 
 func (s *OrderService) ProcessOrder(ctx context.Context, req *dto.ProcessOrderRequest) error {
 	const op = "OrderService.ProcessOrder"
+	logger.Log.Info(op, "Processing order with ID:", req.Order.OrderUID)
 
-	logger.Log.Info(op, "Processing order with ID : ", req.Order.OrderUID)
+	modelOrder := s.dtoToModel(req.Order)
+
 	return s.txManager.RunSerializable(ctx, func(ctx context.Context) error {
-		if err := s.orderRepo.CreateOrder(ctx, req.Order); err != nil {
+		if err := s.orderRepo.CreateOrder(ctx, modelOrder); err != nil {
 			logger.Log.Error(op, "Failed to create order", err)
 			return err
 		}
-		items := make([]*models.Item, len(req.Order.Items))
-		for i := range req.Order.Items {
-			items[i] = &req.Order.Items[i]
-		}
 
-		if err := s.itemsRepo.AddItems(ctx, req.Order.OrderUID, items); err != nil {
+		items := make([]*models.Item, len(modelOrder.Items))
+		for i := range modelOrder.Items {
+			items[i] = &modelOrder.Items[i]
+		}
+		if err := s.itemsRepo.AddItems(ctx, modelOrder.OrderUID, items); err != nil {
 			logger.Log.Error(op, "Failed to add items to order", err)
 			return err
 		}
 
-		if err := s.deliveryRepo.CreateDelivery(ctx, &req.Order.Delivery); err != nil {
+		if err := s.deliveryRepo.CreateDelivery(ctx, &modelOrder.Delivery); err != nil {
 			logger.Log.Error(op, "Failed to create delivery", err)
 			return err
 		}
 
-		if err := s.paymentRepo.CreatePayment(ctx, &req.Order.Payment); err != nil {
+		if err := s.paymentRepo.CreatePayment(ctx, &modelOrder.Payment); err != nil {
 			logger.Log.Error(op, "Failed to create payment", err)
 			return err
 		}
 
-		logger.Log.Info(op, "Order processed successfully, order_id: ", req.Order.OrderUID)
+		logger.Log.Info(op, "Order processed successfully, order_id:", modelOrder.OrderUID)
 
-		if err := s.cache.Set(ctx, req.Order.OrderUID, req.Order, s.cacheTTL); err != nil {
+		cacheKey := fmt.Sprintf("order:%s", modelOrder.OrderUID)
+		if err := s.cache.Set(ctx, cacheKey, modelOrder, s.cacheTTL); err != nil {
 			logger.Log.Error(op, "Failed to cache order", err)
 			return err
 		}
-
 		return nil
-
 	})
 }
 
@@ -150,29 +129,133 @@ func (r *OrderService) GetByID(
 	req *dto.GetOrderByIDRequest,
 ) (*dto.GetOrderByIDResponse, error) {
 	const op = "OrderService.GetByID"
-	logger.Log.Info(op, "Fetching order by ID: ", req.OrderID)
+	logger.Log.Info(op, "Fetching order by ID:", req.OrderID)
 
 	cacheKey := fmt.Sprintf("order:%s", req.OrderID)
-	var cachedOrder models.Order
-	err := r.cache.Get(ctx, cacheKey, cachedOrder)
-
-	if err == nil {
+	var cached models.Order
+	if err := r.cache.Get(ctx, cacheKey, &cached); err == nil {
 		logger.Log.Info(op, "Order found in cache with order_id: ", req.OrderID)
-		return &dto.GetOrderByIDResponse{
-			Order: &cachedOrder,
-		}, nil
+		return &dto.GetOrderByIDResponse{Order: r.modelToDTO(&cached)}, nil
 	}
 
-	logger.Log.Warn(op, "Cache miss for order with order_id : ", req.OrderID)
-	var order *models.Order
-	order, err = r.orderRepo.GetOrderByID(ctx, req.OrderID)
+	logger.Log.Warn(op, "Cache miss order_id: ", req.OrderID)
+
+	order, err := r.orderRepo.GetOrderByID(ctx, req.OrderID)
 	if err != nil {
 		logger.Log.Error(op, "Failed to get order from repository", err)
 		return nil, err
 	}
-	logger.Log.Info(op, "Order fetched from repository with order_id: ", req.OrderID)
-	return &dto.GetOrderByIDResponse{
-		Order: order,
-	}, nil
 
+	_ = r.cache.Set(ctx, cacheKey, order, r.cacheTTL)
+
+	return &dto.GetOrderByIDResponse{Order: r.modelToDTO(order)}, nil
+}
+
+func (s *OrderService) dtoToModel(in dto.OrderRequest) *models.Order {
+	out := &models.Order{
+		OrderUID:          in.OrderUID,
+		TrackNumber:       in.TrackNumber,
+		Entry:             in.Entry,
+		Locale:            in.Locale,
+		InternalSignature: in.InternalSignature,
+		CustomerID:        in.CustomerID,
+		DeliveryService:   in.DeliveryService,
+		ShardKey:          in.ShardKey,
+		SmID:              in.SmID,
+		DateCreated:       in.DateCreated,
+		OofShard:          in.OofShard,
+		Delivery: models.Delivery{
+			OrderID: in.OrderUID,
+			Name:    in.Delivery.Name,
+			Phone:   in.Delivery.Phone,
+			Zip:     in.Delivery.Zip,
+			City:    in.Delivery.City,
+			Address: in.Delivery.Address,
+			Region:  in.Delivery.Region,
+			Email:   in.Delivery.Email,
+		},
+		Payment: models.Payment{
+			Transaction:  in.Payment.Transaction,
+			OrderID:      in.OrderUID,
+			RequestID:    in.Payment.RequestID,
+			Currency:     in.Payment.Currency,
+			Provider:     in.Payment.Provider,
+			Amount:       in.Payment.Amount,
+			PaymentDt:    in.Payment.PaymentDt,
+			Bank:         in.Payment.Bank,
+			DeliveryCost: in.Payment.DeliveryCost,
+			GoodsTotal:   in.Payment.GoodsTotal,
+			CustomFee:    in.Payment.CustomFee,
+		},
+	}
+	for _, it := range in.Items {
+		out.Items = append(out.Items, models.Item{
+			OrderID:     in.OrderUID,
+			ChrtID:      it.ChrtID,
+			TrackNumber: it.TrackNumber,
+			Price:       it.Price,
+			Rid:         it.Rid,
+			Name:        it.Name,
+			Sale:        it.Sale,
+			Size:        it.Size,
+			TotalPrice:  it.TotalPrice,
+			NmId:        it.NmId,
+			Brand:       it.Brand,
+			Status:      it.Status,
+		})
+	}
+	return out
+}
+
+func (s *OrderService) modelToDTO(in *models.Order) dto.OrderResponse {
+	out := dto.OrderResponse{
+		OrderUID:          in.OrderUID,
+		TrackNumber:       in.TrackNumber,
+		Entry:             in.Entry,
+		Locale:            in.Locale,
+		InternalSignature: in.InternalSignature,
+		CustomerID:        in.CustomerID,
+		DeliveryService:   in.DeliveryService,
+		ShardKey:          in.ShardKey,
+		SmID:              in.SmID,
+		DateCreated:       in.DateCreated,
+		OofShard:          in.OofShard,
+		Delivery: dto.DeliveryDTO{
+			Name:    in.Delivery.Name,
+			Phone:   in.Delivery.Phone,
+			Zip:     in.Delivery.Zip,
+			City:    in.Delivery.City,
+			Address: in.Delivery.Address,
+			Region:  in.Delivery.Region,
+			Email:   in.Delivery.Email,
+		},
+		Payment: dto.PaymentDTO{
+			Transaction:  in.Payment.Transaction,
+			RequestID:    in.Payment.RequestID,
+			Currency:     in.Payment.Currency,
+			Provider:     in.Payment.Provider,
+			Amount:       in.Payment.Amount,
+			PaymentDt:    in.Payment.PaymentDt,
+			Bank:         in.Payment.Bank,
+			DeliveryCost: in.Payment.DeliveryCost,
+			GoodsTotal:   in.Payment.GoodsTotal,
+			CustomFee:    in.Payment.CustomFee,
+		},
+	}
+	for _, it := range in.Items {
+		out.Items = append(out.Items, dto.ItemDTO{
+			ChrtID:      it.ChrtID,
+			TrackNumber: it.TrackNumber,
+			Price:       it.Price,
+			Rid:         it.Rid,
+			Name:        it.Name,
+			Sale:        it.Sale,
+			Size:        it.Size,
+			TotalPrice:  it.TotalPrice,
+			NmId:        it.NmId,
+			Brand:       it.Brand,
+			Status:      it.Status,
+		})
+	}
+	return out
 }
