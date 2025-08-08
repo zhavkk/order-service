@@ -31,8 +31,9 @@ type PostgresConfig struct {
 }
 
 type RedisConfig struct {
-	Host string `env:"REDIS_HOST" envDefault:"localhost"`
-	Port string `env:"REDIS_PORT" envDefault:"6379"`
+	Host string        `env:"REDIS_HOST" envDefault:"localhost"`
+	Port string        `env:"REDIS_PORT" envDefault:"6379"`
+	TTL  time.Duration `yaml:"ttl" env:"REDIS_TTL" env-default:"5m"`
 }
 
 type KafkaConfig struct {

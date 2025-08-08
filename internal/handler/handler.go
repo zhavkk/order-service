@@ -31,6 +31,12 @@ func NewHandler(orderService OrderService) *Handler {
 	}
 }
 
+func (h *Handler) RegisterRoutes(r chi.Router) {
+	r.Route("/orders", func(r chi.Router) {
+		r.Get("/{order_id}", h.GetOrderByID)
+	})
+}
+
 func (h *Handler) GetOrderByID(
 	w http.ResponseWriter,
 	r *http.Request,

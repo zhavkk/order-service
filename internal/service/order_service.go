@@ -26,7 +26,7 @@ type DeliveryRepository interface {
 }
 
 type PaymentRepository interface {
-	GetPaymentByOrderID(ctx context.Context, orderID string) (*models.Payment, error)
+	GetPaymentByTransaction(ctx context.Context, orderID string) (*models.Payment, error)
 	CreatePayment(ctx context.Context, payment *models.Payment) error
 }
 
@@ -69,6 +69,7 @@ func (s *OrderService) ProcessMessage(ctx context.Context, message []byte) error
 	logger.Log.Info(op, "Processing message from Kafka", nil)
 
 	var in dto.OrderRequest
+
 	if err := json.Unmarshal(message, &in); err != nil {
 		logger.Log.Error(op, "Failed to unmarshal order", err)
 		return nil
@@ -79,7 +80,11 @@ func (s *OrderService) ProcessMessage(ctx context.Context, message []byte) error
 		return nil
 	}
 
-	return s.ProcessOrder(ctx, &dto.ProcessOrderRequest{Order: in})
+	if err := s.ProcessOrder(ctx, &dto.ProcessOrderRequest{Order: in}); err != nil {
+		logger.Log.Error(op, "Failed to process order", err)
+		return err
+	}
+	return nil
 }
 
 func (s *OrderService) ProcessOrder(ctx context.Context, req *dto.ProcessOrderRequest) error {
