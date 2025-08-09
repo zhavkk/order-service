@@ -2,9 +2,11 @@ package consumer
 
 import (
 	"context"
+	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/zhavkk/order-service/internal/logger"
+	"github.com/zhavkk/order-service/pkg/utils"
 )
 
 type Consumer interface {
@@ -16,6 +18,8 @@ type KafkaConsumer struct {
 	consumerGroup sarama.ConsumerGroup
 	topic         string
 	handler       func(message []byte) error
+	retryCount    int
+	backoff       time.Duration
 }
 
 func NewKafkaConsumer(
@@ -24,6 +28,8 @@ func NewKafkaConsumer(
 	handler func(message []byte) error,
 	cfg *sarama.Config,
 	groupID string,
+	retryCount int,
+	backoff time.Duration,
 ) (*KafkaConsumer, error) {
 	consumerGroup, err := sarama.NewConsumerGroup(brokers, groupID, cfg)
 	if err != nil {
@@ -34,6 +40,8 @@ func NewKafkaConsumer(
 		consumerGroup: consumerGroup,
 		topic:         topic,
 		handler:       handler,
+		retryCount:    retryCount,
+		backoff:       backoff,
 	}, nil
 }
 
@@ -46,6 +54,7 @@ func (kc *KafkaConsumer) Consume(ctx context.Context) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+
 	}
 }
 
@@ -56,12 +65,18 @@ func (kc *KafkaConsumer) Close() error {
 
 func (kc *KafkaConsumer) Setup(sarama.ConsumerGroupSession) error   { return nil }
 func (kc *KafkaConsumer) Cleanup(sarama.ConsumerGroupSession) error { return nil }
+
 func (kc *KafkaConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for message := range claim.Messages() {
-		if err := kc.handler(message.Value); err != nil {
-			logger.Log.Error("Error handling message", "error", err, "message", string(message.Value))
+		err := utils.RetryWithBackoff(func() error {
+			return kc.handler(message.Value)
+		}, kc.retryCount, kc.backoff)
+
+		if err != nil {
+			logger.Log.Error("Failed to handle message after retries", "error", err, "message", string(message.Value))
 			continue
 		}
+
 		session.MarkMessage(message, "")
 	}
 	return nil

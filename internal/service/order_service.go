@@ -17,6 +17,7 @@ import (
 
 type OrderRepository interface {
 	GetOrderByID(ctx context.Context, orderID string) (*models.Order, error)
+	GetRecentOrders(ctx context.Context, limit int) ([]*models.Order, error)
 	CreateOrder(ctx context.Context, order *models.Order) error
 }
 
@@ -154,6 +155,33 @@ func (r *OrderService) GetByID(
 	_ = r.cache.Set(ctx, cacheKey, order, r.cacheTTL)
 
 	return &dto.GetOrderByIDResponse{Order: r.modelToDTO(order)}, nil
+}
+
+func (s *OrderService) WarmUpCache(ctx context.Context) error {
+	const op = "OrderService.WarmUpCache"
+	logger.Log.Info(op, "Warming up cache with 1000 recent orders", nil)
+
+	orders, err := s.orderRepo.GetRecentOrders(ctx, 1000)
+	if err != nil {
+		logger.Log.Error(op, "Failed to get recent orders", err)
+		return err
+	}
+
+	cnt := 0
+
+	for _, order := range orders {
+		cacheKey := fmt.Sprintf("order:%s", order.OrderUID)
+		if err := s.cache.Set(ctx, cacheKey, order, s.cacheTTL); err != nil {
+			logger.Log.Error(op, "Failed to cache order with order_id: ", order.OrderUID, "error", err)
+			continue
+		}
+		cnt++
+	}
+
+	logger.Log.Info(op, "cache warme-up completed with total orders : ", len(orders), "cached orders : ", cnt)
+
+	return nil
+
 }
 
 func (s *OrderService) dtoToModel(in dto.OrderRequest) *models.Order {

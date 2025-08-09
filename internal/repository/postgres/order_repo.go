@@ -3,19 +3,26 @@ package postgres
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/zhavkk/order-service/internal/logger"
 	"github.com/zhavkk/order-service/internal/models"
 	"github.com/zhavkk/order-service/pkg/pgstorage"
+	"github.com/zhavkk/order-service/pkg/utils"
 )
 
 type OrderRepository struct {
-	storage *pgstorage.Storage
+	storage    *pgstorage.Storage
+	retryCount int
+	backoff    time.Duration
 }
 
-func NewOrderRepository(storage *pgstorage.Storage) *OrderRepository {
+func NewOrderRepository(storage *pgstorage.Storage, retryCount int, backoff time.Duration) *OrderRepository {
 	return &OrderRepository{
-		storage: storage,
+		storage:    storage,
+		retryCount: retryCount,
+		backoff:    backoff,
 	}
 }
 
@@ -103,8 +110,49 @@ func (r *OrderRepository) GetOrderByID(ctx context.Context, orderID string) (*mo
 	return &fo, nil
 }
 
+func (r *OrderRepository) GetRecentOrders(ctx context.Context, limit int) ([]*models.Order, error) {
+	const op = "OrderRepository.GetRecentOrders"
+	orderQuery := `
+        SELECT order_uid
+        FROM orders
+        ORDER BY date_created DESC
+        LIMIT $1
+    `
+
+	rows, err := r.storage.GetPool().Query(ctx, orderQuery, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var orderUIDs []string
+	for rows.Next() {
+		var orderUID string
+		if err := rows.Scan(&orderUID); err != nil {
+			return nil, err
+		}
+		orderUIDs = append(orderUIDs, orderUID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	var orders []*models.Order
+	for _, uid := range orderUIDs {
+		fullOrder, err := r.GetOrderByID(ctx, uid)
+		if err != nil {
+			logger.Log.Error(op, "Failed to get order by ID", err)
+			continue
+		}
+		orders = append(orders, fullOrder)
+	}
+
+	return orders, nil
+}
 func (r *OrderRepository) CreateOrder(ctx context.Context, order *models.Order) error {
-	query := `
+	return utils.RetryWithBackoff(func() error {
+
+		query := `
 	INSERT INTO orders (
         order_uid, track_number, entry, locale, internal_signature, customer_id,
         delivery_service, shardkey, sm_id, date_created, oof_shard
@@ -114,13 +162,14 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, order *models.Order) 
 	ON CONFLICT (order_uid) DO NOTHING	
 	`
 
-	tx, ok := pgstorage.GetTxFromContext(ctx)
-	if !ok {
-		return ErrNoTransaction
-	}
-	_, err := tx.Exec(ctx, query,
-		order.OrderUID, order.TrackNumber, order.Entry, order.Locale, order.InternalSignature, order.CustomerID,
-		order.DeliveryService, order.ShardKey, order.SmID, order.DateCreated, order.OofShard,
-	)
-	return err
+		tx, ok := pgstorage.GetTxFromContext(ctx)
+		if !ok {
+			return ErrNoTransaction
+		}
+		_, err := tx.Exec(ctx, query,
+			order.OrderUID, order.TrackNumber, order.Entry, order.Locale, order.InternalSignature, order.CustomerID,
+			order.DeliveryService, order.ShardKey, order.SmID, order.DateCreated, order.OofShard,
+		)
+		return err
+	}, r.retryCount, r.backoff)
 }

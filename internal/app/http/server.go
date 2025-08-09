@@ -19,8 +19,11 @@ type HTTPApp struct {
 func New(cfg *config.Config, handler http.Handler) *HTTPApp {
 	return &HTTPApp{
 		httpServer: &http.Server{
-			Addr:    cfg.HTTP.Port,
-			Handler: handler,
+			Addr:         cfg.HTTP.Port,
+			Handler:      handler,
+			ReadTimeout:  cfg.HTTP.ReadTimeout,
+			WriteTimeout: cfg.HTTP.WriteTimeout,
+			IdleTimeout:  cfg.HTTP.IdleTimeout,
 		},
 		port: cfg.HTTP.Port,
 	}

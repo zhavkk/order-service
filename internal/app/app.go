@@ -3,9 +3,11 @@ package app
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/redis/go-redis/v9"
+	"github.com/zhavkk/order-service/internal/app/consumer"
 	httpapp "github.com/zhavkk/order-service/internal/app/http"
 	"github.com/zhavkk/order-service/internal/config"
 	"github.com/zhavkk/order-service/internal/handler"
@@ -13,6 +15,7 @@ import (
 	"github.com/zhavkk/order-service/internal/repository/postgres"
 	"github.com/zhavkk/order-service/internal/service"
 	rediscache "github.com/zhavkk/order-service/pkg/cache/redis"
+	kafkapkg "github.com/zhavkk/order-service/pkg/kafka/consumer"
 	"github.com/zhavkk/order-service/pkg/pgstorage"
 )
 
@@ -37,6 +40,7 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	redisClient := redis.NewClient(
 		&redis.Options{
 			Addr: cfg.Redis.Addr(),
+			DB:   cfg.Redis.Db,
 		},
 	)
 	cache, err := rediscache.NewClient(redisClient, logger.Log)
@@ -47,12 +51,25 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	cacheTTL := cfg.Redis.TTL
 
-	orderRepo := postgres.NewOrderRepository(postgresStorage)
-	itemsRepo := postgres.NewItemRepository(postgresStorage)
-	paymentRepo := postgres.NewPaymentRepository(postgresStorage)
-	deliveryRepo := postgres.NewDeliveryRepository(postgresStorage)
+	retriesDB := cfg.Postgres.Retries
+	backoffDB := cfg.Postgres.Backoff
+
+	orderRepo := postgres.NewOrderRepository(postgresStorage, retriesDB, backoffDB)
+	itemsRepo := postgres.NewItemRepository(postgresStorage, retriesDB, backoffDB)
+	paymentRepo := postgres.NewPaymentRepository(postgresStorage, retriesDB, backoffDB)
+	deliveryRepo := postgres.NewDeliveryRepository(postgresStorage, retriesDB, backoffDB)
 
 	orderService := service.NewOrderService(orderRepo, deliveryRepo, paymentRepo, itemsRepo, txManager, cache, cacheTTL)
+
+	go func() {
+		warmUpCTX, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+		if err := orderService.WarmUpCache(warmUpCTX); err != nil {
+			logger.Log.Error("Failed to warm up cache", "error", err)
+		}
+
+		logger.Log.Info("Cache warmed up successfully")
+	}()
 
 	handler := handler.NewHandler(orderService)
 	router := httpapp.SetupRouter()
@@ -65,6 +82,31 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	app := &App{
 		httpApp: httpApp,
 	}
+
+	saramaCfg, err := kafkapkg.NewSaramaConfig(cfg)
+	if err != nil {
+		logger.Log.Error("Failed to create Sarama config", "error", err)
+		return nil, err
+	}
+
+	retriesKafka := cfg.Kafka.Retries
+	backoffKafka := cfg.Kafka.Backoff
+
+	kafkaConsumer, err := consumer.NewKafkaConsumer(
+		cfg.Kafka.Brokers, cfg.Kafka.OrderTopic,
+		func(msg []byte) error { return orderService.ProcessMessage(ctx, msg) },
+		saramaCfg, cfg.Kafka.GroupID, retriesKafka, backoffKafka,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		if err := kafkaConsumer.Consume(ctx); err != nil {
+			logger.Log.Error("Kafka consumer stopped", "error", err)
+		}
+	}()
 
 	logger.Log.Info("Application initialized successfully", "env", cfg.Env)
 

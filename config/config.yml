@@ -1,9 +1,28 @@
+env: local
 
 http:
   port: 8080
-  
+  read_timeout: 5s
+  write_timeout: 5s
+  idle_timeout: 60s
 
+redis:
+  addr: localhost:6379
+  password: ""
+  ttl: 5m
 
+kafka:
+  version: 2.8.0
+  auto_commit_interval: 1s
+  brokers: ["localhost:9092"]
+  order_topic: orders
+  group_id: order_service_group
+  retries: 3
+  backoff: 1s
+
+db:
+  retries: 3
+  backoff: 1s
 
 
   
