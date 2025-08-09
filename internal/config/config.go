@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -18,7 +19,7 @@ type Config struct {
 }
 
 type HTTPConfig struct {
-	Port         string        `yaml:"port" env:"HTTP_PORT" env-default:":8080"`
+	Port         int           `yaml:"port" env:"HTTP_PORT" env-default:"8080"`
 	ReadTimeout  time.Duration `yaml:"read_timeout" env:"HTTP_READ_TIMEOUT" env-default:"5s"`
 	WriteTimeout time.Duration `yaml:"write_timeout" env:"HTTP_WRITE_TIMEOUT" env-default:"5s"`
 	IdleTimeout  time.Duration `yaml:"idle_timeout" env:"HTTP_IDLE_TIMEOUT" env-default:"60s"`
@@ -64,6 +65,9 @@ func (c PostgresConfig) DSN() string {
 }
 
 func MustLoad(configPath string) *Config {
+	if err := godotenv.Load(); err != nil {
+		log.Printf("No .env file found or failed to load: %v", err)
+	}
 	if configPath == "" {
 		panic("Config path is not set")
 	}

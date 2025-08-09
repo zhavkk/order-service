@@ -13,11 +13,14 @@ import (
 )
 
 func main() {
-	cfg := config.MustLoad("src/config/config.yml")
+	cfg := config.MustLoad("config/config.yml")
 
 	logger.Init(cfg.Env)
 
 	logger.Log.Info("Order Service")
+
+	logger.Log.Info("Redis address from config", "addr", cfg.Redis.Addr())
+	logger.Log.Info("Postgres DSN", "dsn", cfg.Postgres.DSN())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

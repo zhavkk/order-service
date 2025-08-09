@@ -2,6 +2,7 @@ package httpapp
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -13,13 +14,13 @@ import (
 
 type HTTPApp struct {
 	httpServer *http.Server
-	port       string
+	port       int
 }
 
 func New(cfg *config.Config, handler http.Handler) *HTTPApp {
 	return &HTTPApp{
 		httpServer: &http.Server{
-			Addr:         cfg.HTTP.Port,
+			Addr:         fmt.Sprintf(":%d", cfg.HTTP.Port),
 			Handler:      handler,
 			ReadTimeout:  cfg.HTTP.ReadTimeout,
 			WriteTimeout: cfg.HTTP.WriteTimeout,
