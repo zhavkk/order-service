@@ -27,7 +27,6 @@ type DeliveryRepository interface {
 }
 
 type PaymentRepository interface {
-	GetPaymentByTransaction(ctx context.Context, orderID string) (*models.Payment, error)
 	CreatePayment(ctx context.Context, payment *models.Payment) error
 }
 
@@ -181,7 +180,6 @@ func (s *OrderService) WarmUpCache(ctx context.Context) error {
 	logger.Log.Info(op, "cache warme-up completed with total orders : ", len(orders), "cached orders : ", cnt)
 
 	return nil
-
 }
 
 func (s *OrderService) dtoToModel(in dto.OrderRequest) *models.Order {

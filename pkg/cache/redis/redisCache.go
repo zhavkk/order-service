@@ -65,7 +65,7 @@ func (c *Client) Set(ctx context.Context, key string, value any, ttl time.Durati
 	err = c.client.Set(ctx, key, data, ttl).Err()
 
 	dur := time.Since(start)
-	c.log.Info(op, "key", slog.String("key", key), "duration", dur, "ttl", ttl)
+	c.log.Info(op, slog.String("key", key), "duration", dur, "ttl", ttl)
 
 	return err
 }

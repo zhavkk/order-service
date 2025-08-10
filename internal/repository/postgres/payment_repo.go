@@ -41,18 +41,3 @@ func (r *PaymentRepository) CreatePayment(ctx context.Context, payment *models.P
 		return err
 	}, r.retryCount, r.backoff)
 }
-
-func (r *PaymentRepository) GetPaymentByTransaction(ctx context.Context, transaction string) (*models.Payment, error) {
-	query := `SELECT transaction, order_uid, request_id, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, custom_fee
-        FROM payments WHERE transaction = $1`
-	row := r.storage.GetPool().QueryRow(ctx, query, transaction)
-	var payment models.Payment
-	err := row.Scan(
-		&payment.Transaction, &payment.OrderID, &payment.RequestID, &payment.Currency, &payment.Provider,
-		&payment.Amount, &payment.PaymentDt, &payment.Bank, &payment.DeliveryCost, &payment.GoodsTotal, &payment.CustomFee,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &payment, nil
-}
