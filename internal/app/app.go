@@ -143,4 +143,6 @@ func addSystemRoutes(router *chi.Mux) {
 	router.Handle("/metrics", prometheusmetrics.Handler())
 	router.Get("/swagger/*", httpSwagger.WrapHandler)
 
+	fileServer := http.FileServer(http.Dir("./internal/web"))
+	router.Handle("/*", fileServer)
 }
