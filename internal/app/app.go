@@ -132,12 +132,16 @@ func addSystemRoutes(router *chi.Mux) {
 	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok","service":"async-task-manager"}`))
+		if _, err := w.Write([]byte(`{"status":"ok","service":"order-service"}`)); err != nil {
+			logger.Log.Error("Failed to write response", "error", err)
+		}
 	})
 
 	router.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("pong"))
+		if _, err := w.Write([]byte("pong")); err != nil {
+			logger.Log.Error("Failed to write response", "error", err)
+		}
 	})
 
 	router.Handle("/metrics", prometheusmetrics.Handler())

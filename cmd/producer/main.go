@@ -28,7 +28,12 @@ func main() {
 		logger.Log.Error("Failed to create Kafka producer", "error", err)
 		return
 	}
-	defer producer.Close()
+	defer func() {
+
+		if err := producer.Close(); err != nil {
+			logger.Log.Error("Failed to close Kafka producer", "error", err)
+		}
+	}()
 
 	logger.Log.Info("Kafka producer started", "brokers", brokers, "topic", topic)
 	for i := 0; i < 10; i++ {

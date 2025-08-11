@@ -26,3 +26,8 @@ go-lint:
 	@echo "==> Running linter..."
 	@golangci-lint run ./... -v
 
+
+.PHONY: go-test
+go-test:
+	@echo "==> Running tests..."
+	@go test -v ./... 
