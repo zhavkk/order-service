@@ -10,13 +10,13 @@ CREATE TABLE orders (
     delivery_service VARCHAR,
     shardkey VARCHAR,
     sm_id INTEGER,
-    date_created TIMESTAMP,
+    date_created TIMESTAMP WITH TIME ZONE,
     oof_shard VARCHAR
 );
 
-CREATE TABLE deliveries (
+CREATE TABLE delivery (
     delivery_id SERIAL PRIMARY KEY,
-    order_uid VARCHAR REFERENCES orders(order_uid),
+    order_uid VARCHAR REFERENCES orders(order_uid) ON DELETE CASCADE,
     name VARCHAR,
     phone VARCHAR,
     zip VARCHAR,
@@ -28,7 +28,7 @@ CREATE TABLE deliveries (
 
 CREATE TABLE payments (
     transaction VARCHAR PRIMARY KEY,
-    order_uid VARCHAR REFERENCES orders(order_uid),
+    order_uid VARCHAR REFERENCES orders(order_uid) ON DELETE CASCADE,
     request_id VARCHAR,
     currency VARCHAR,
     provider VARCHAR,
@@ -43,7 +43,7 @@ CREATE TABLE payments (
 
 CREATE TABLE items (
     item_id SERIAL PRIMARY KEY,
-    order_uid VARCHAR REFERENCES orders(order_uid),
+    order_uid VARCHAR REFERENCES orders(order_uid) ON DELETE CASCADE,
     chrt_id BIGINT,
     track_number VARCHAR,
     price INTEGER,
@@ -56,9 +56,18 @@ CREATE TABLE items (
     brand VARCHAR,
     status INTEGER
 );
+
+CREATE INDEX idx_items_order_uid ON items(order_uid);
+CREATE INDEX idx_payments_order_uid ON payments(order_uid);
+CREATE INDEX idx_delivery_order_uid ON delivery(order_uid);
+CREATE INDEX idx_orders_order_uid ON orders(order_uid);
+
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-SELECT 'down SQL query';
+DROP TABLE IF EXISTS items;
+DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS delivery;
+DROP TABLE IF EXISTS orders;
 -- +goose StatementEnd
