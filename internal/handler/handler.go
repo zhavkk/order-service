@@ -38,6 +38,18 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	})
 }
 
+// GetOrderByID получает заказ по его ID.
+// @Summary Получить заказ
+// @Description Возвращает заказ по идентификатору.
+// @Tags Orders
+// @Accept json
+// @Produce json
+// @Param order_id path string true "ID заказа"
+// @Success 200 {object} dto.GetOrderByIDResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /orders/{order_id} [get]
 func (h *Handler) GetOrderByID(
 	w http.ResponseWriter,
 	r *http.Request,

@@ -12,6 +12,7 @@ import (
 	"github.com/zhavkk/order-service/internal/logger"
 	"github.com/zhavkk/order-service/internal/models"
 	"github.com/zhavkk/order-service/pkg/cache"
+	prometheusmetrics "github.com/zhavkk/order-service/pkg/metrics/prometheus"
 	"github.com/zhavkk/order-service/pkg/pgstorage"
 )
 
@@ -84,6 +85,8 @@ func (s *OrderService) ProcessMessage(ctx context.Context, message []byte) error
 		logger.Log.Error(op, "Failed to process order", err)
 		return err
 	}
+	prometheusmetrics.MessageProcessedTotal.WithLabelValues("success").Inc()
+
 	return nil
 }
 
@@ -125,6 +128,9 @@ func (s *OrderService) ProcessOrder(ctx context.Context, req *dto.ProcessOrderRe
 			logger.Log.Error(op, "Failed to cache order", err)
 			return err
 		}
+
+		prometheusmetrics.OrdersCreatedTotal.Inc()
+
 		return nil
 	})
 }

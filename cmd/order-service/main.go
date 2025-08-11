@@ -7,11 +7,26 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/zhavkk/order-service/docs"
 	"github.com/zhavkk/order-service/internal/app"
 	"github.com/zhavkk/order-service/internal/config"
 	"github.com/zhavkk/order-service/internal/logger"
 )
 
+// @title Order Service API
+// @version 1.0
+// @description API для управления заказами.
+// @termsOfService http://example.com/terms/
+
+// @contact.name API Support
+// @contact.url http://example.com/support
+// @contact.email support@example.com
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /
 func main() {
 	cfg := config.MustLoad("config/config.yml")
 

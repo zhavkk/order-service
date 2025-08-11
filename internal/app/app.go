@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/redis/go-redis/v9"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"github.com/zhavkk/order-service/internal/app/consumer"
 	httpapp "github.com/zhavkk/order-service/internal/app/http"
 	"github.com/zhavkk/order-service/internal/config"
@@ -16,6 +17,7 @@ import (
 	"github.com/zhavkk/order-service/internal/service"
 	rediscache "github.com/zhavkk/order-service/pkg/cache/redis"
 	kafkapkg "github.com/zhavkk/order-service/pkg/kafka/consumer"
+	prometheusmetrics "github.com/zhavkk/order-service/pkg/metrics/prometheus"
 	"github.com/zhavkk/order-service/pkg/pgstorage"
 )
 
@@ -77,6 +79,9 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	httpApp := httpapp.New(cfg, router)
 
 	handler.RegisterRoutes(router)
+
+	prometheusmetrics.Init()
+
 	addSystemRoutes(router)
 
 	app := &App{
@@ -134,4 +139,8 @@ func addSystemRoutes(router *chi.Mux) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("pong"))
 	})
+
+	router.Handle("/metrics", prometheusmetrics.Handler())
+	router.Get("/swagger/*", httpSwagger.WrapHandler)
+
 }

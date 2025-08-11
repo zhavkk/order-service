@@ -1,0 +1,195 @@
+basePath: /
+definitions:
+  dto.DeliveryDTO:
+    properties:
+      address:
+        type: string
+      city:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      region:
+        type: string
+      zip:
+        type: string
+    required:
+    - address
+    - city
+    - email
+    - name
+    - phone
+    - region
+    - zip
+    type: object
+  dto.ErrorResponse:
+    properties:
+      code:
+        type: integer
+      error:
+        type: string
+      message:
+        type: string
+    type: object
+  dto.GetOrderByIDResponse:
+    properties:
+      order:
+        $ref: '#/definitions/dto.OrderResponse'
+    type: object
+  dto.ItemDTO:
+    properties:
+      brand:
+        type: string
+      chrt_id:
+        type: integer
+      name:
+        type: string
+      nm_id:
+        type: integer
+      price:
+        minimum: 0
+        type: integer
+      rid:
+        type: string
+      sale:
+        minimum: 0
+        type: integer
+      size:
+        type: string
+      status:
+        type: integer
+      total_price:
+        minimum: 0
+        type: integer
+      track_number:
+        type: string
+    required:
+    - brand
+    - chrt_id
+    - name
+    - nm_id
+    - rid
+    - size
+    - status
+    - track_number
+    type: object
+  dto.OrderResponse:
+    properties:
+      customer_id:
+        type: string
+      date_created:
+        type: string
+      delivery:
+        $ref: '#/definitions/dto.DeliveryDTO'
+      delivery_service:
+        type: string
+      entry:
+        type: string
+      internal_signature:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/dto.ItemDTO'
+        type: array
+      locale:
+        type: string
+      oof_shard:
+        type: string
+      order_uid:
+        type: string
+      payment:
+        $ref: '#/definitions/dto.PaymentDTO'
+      shardkey:
+        type: string
+      sm_id:
+        type: integer
+      track_number:
+        type: string
+    type: object
+  dto.PaymentDTO:
+    properties:
+      amount:
+        minimum: 0
+        type: integer
+      bank:
+        type: string
+      currency:
+        enum:
+        - USD
+        - EUR
+        - RUB
+        type: string
+      custom_fee:
+        minimum: 0
+        type: integer
+      delivery_cost:
+        minimum: 0
+        type: integer
+      goods_total:
+        minimum: 0
+        type: integer
+      payment_dt:
+        type: integer
+      provider:
+        type: string
+      request_id:
+        type: string
+      transaction:
+        type: string
+    required:
+    - bank
+    - currency
+    - provider
+    - transaction
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+    url: http://example.com/support
+  description: API для управления заказами.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://example.com/terms/
+  title: Order Service API
+  version: "1.0"
+paths:
+  /orders/{order_id}:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает заказ по идентификатору.
+      parameters:
+      - description: ID заказа
+        in: path
+        name: order_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.GetOrderByIDResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Получить заказ
+      tags:
+      - Orders
+swagger: "2.0"

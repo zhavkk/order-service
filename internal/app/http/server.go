@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/zhavkk/order-service/internal/config"
 	"github.com/zhavkk/order-service/internal/logger"
+	metricsmw "github.com/zhavkk/order-service/internal/middleware"
 )
 
 type HTTPApp struct {
@@ -47,6 +48,7 @@ func SetupRouter() *chi.Mux {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Timeout(60 * time.Second))
-	// then CORS and etc
+
+	r.Use(metricsmw.MetricsMiddleware)
 	return r
 }
