@@ -5,6 +5,11 @@
 **Order Service** — это демонстрационный микросервис, разработанный на Go, который обрабатывает данные о заказах. Сервис получает данные из очереди сообщений (Kafka), сохраняет их в базу данных (PostgreSQL), кэширует в памяти для быстрого доступа и предоставляет HTTP API для получения информации о заказах.
 
 ---
+## Демонстрация работы
+
+**Ссылка на видео в google drive**:  https://drive.google.com/file/d/1LxIvPLzt0TrPpZk0f5tLcK4a22nLwBRR/view?usp=sharing
+
+---
 
 ## Функциональность
 
@@ -12,7 +17,7 @@
    - Сервис подписывается на канал сообщений Kafka и обрабатывает входящие данные о заказах.
    - Невалидные сообщения логируются и игнорируются.
    - Worker (Kafka consumer) был реализован с помощью библиотеки Sarama. Конфиг для консьюмера вынес в pkg/kafka/comsumer, реализация consumer в internal/app/consumer. Запускается в отдельной горутине при инициализации приложения в app.go 
-   - Примитивный producer лежит в cmd/producer
+   - Примитивный producer лежит в cmd/producer (Пишет в топик 10 заказов с рандомным UUID)
 
 2. **Сохранение данных в PostgreSQL**:
    - Данные о заказах сохраняются в базе данных с использованием транзакций для обеспечения целостности данных. Менеджер транзакций и storage ( используется pgxpool ) лежат в pkg/pgstorage
@@ -38,7 +43,8 @@
      GET http://localhost:8080/order/<order_uid>
      ```
    - Если данные есть в кэше, они возвращаются мгновенно. Если данных нет, они подтягиваются из базы и далее добавляются в кэш.
-   - Использовал `chi`
+   - Использовал `chi`, инициализация в internal/app/http. Там же SetupRoutes, где подключаются базовые middleware(Logger, Recoverer, RequestID, RealIP, Timeout)
+
 7. **Сбор метрик с помощью prometheus**:
     - Настроил сбор базовых метрик: общее количество http запросов, длительность http запросов, количество http errors (HTTP метрики собираются с помощью middleware ). Базовые бизнес метрики - количество созданных заказов, количество обработанных заказов (из кафки), метрики доступны по эндпоинту:
     ```
@@ -73,7 +79,7 @@
 
 ### Предварительные требования
 - Docker и Docker Compose
-- Go 1.20+
+- Go 1.24
 
 ### Шаги установки
 
@@ -88,7 +94,7 @@
    docker-compose up --build
    ```
 
-3. Примените миграции для базы данных:
+3. Примените миграции для базы данных (при запуске автоматически применяются в скрипте entrypoint.sh):
    ```bash
    make migrate-up
    ```
@@ -107,10 +113,55 @@ curl -X GET http://localhost:8080/order/<order_uid>
 Ответ:
 ```json
 {
-  "order_uid": "12345",
-  "items": [...],
-  "payment": {...},
-  "delivery": {...}
+  "order": {
+    "order_uid": "baf2ee0e-3fe7-4f37-959d-256f1051c55a",
+    "track_number": "WBILMTESTTRACK",
+    "entry": "WBIL",
+    "delivery": {
+      "name": "Test Delivery",
+      "phone": "+1234567890",
+      "zip": "123456",
+      "city": "Test City",
+      "address": "Test Address",
+      "region": "Test Region",
+      "email": "test@gmail.com"
+    },
+    "payment": {
+      "transaction": "ef711508-5855-40f7-ae45-9dcf9a953397",
+      "request_id": "",
+      "currency": "RUB",
+      "provider": "Test Provider",
+      "amount": 1000,
+      "payment_dt": 1755015741,
+      "bank": "Test Bank",
+      "delivery_cost": 100,
+      "goods_total": 900,
+      "custom_fee": 0
+    },
+    "items": [
+      {
+        "chrt_id": 123456,
+        "track_number": "WBILMTESTTRACK",
+        "price": 1000,
+        "rid": "5a8104ba-5f85-4fcb-a70d-cc6e9a47a59d",
+        "name": "Test Item",
+        "sale": 0,
+        "size": "M",
+        "total_price": 1000,
+        "nm_id": 2389212,
+        "brand": "Test Brand",
+        "status": 1
+      }
+    ],
+    "locale": "ru",
+    "internal_signature": "Test Signature",
+    "customer_id": "test_customer",
+    "delivery_service": "Test Delivery Service",
+    "shardkey": "9",
+    "sm_id": 99,
+    "date_created": "2025-08-12T16:22:21.145596Z",
+    "oof_shard": "1"
+  }
 }
 ```
 
@@ -127,32 +178,18 @@ curl -X GET http://localhost:8080/order/<order_uid>
 
 ---
 
-## Мониторинг и метрики
-
-- Интеграция с Prometheus и Grafana для мониторинга.
-- Метрики включают:
-  - Обработанные сообщения Kafka
-  - Запросы к базе данных
-  - Попадания/промахи кэша
-
----
-
 ## Безопасность
 
-- Используйте переменные окружения для хранения конфиденциальных данных (например, учетные данные базы данных).
-- Добавьте аутентификацию и авторизацию для HTTP API.
+- Для данных postgre нужно использовать .env . Пример .env находится в .env.template
 
 ---
 
 ## Веб-интерфейс
 
-Веб-интерфейс доступен по адресу: `http://localhost:8081`.
+Веб-интерфейс доступен по адресу: `http://localhost:8080/`.
 
 ### Скриншот
-![Web Interface Screenshot](docs/web_interface_screenshot.png)
+![Web Interface Screenshot](docs/order_service.jpg)
 
 ---
 
-## Лицензия
-
-Этот проект распространяется под лицензией MIT. Подробнее см. в файле LICENSE.
