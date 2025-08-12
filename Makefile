@@ -1,5 +1,6 @@
 MIGRATIONS_DIR := migrations
-DB_URL := "postgres://postgres:postgres@localhost:5432/orderdb?sslmode=disable"
+DB_URL := "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=${POSTGRES_SSLMODE}"
+
 .PHONY: migrate-create
 migrate-create:
 	@read -p "Enter migration name: " name; \
@@ -14,7 +15,7 @@ migrate-up:
 .PHONY: migrate-down
 migrate-down:
 	@echo "==> Running migrations down..."
-	@goose -dir $(MIGRATIONS_DIR) down
+	@goose -dir $(MIGRATIONS_DIR) postgres "$(DB_URL)" down
 	
 .PHONY: go-deps
 go-deps:

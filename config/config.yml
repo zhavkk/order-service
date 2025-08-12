@@ -7,7 +7,7 @@ http:
   idle_timeout: 60s
 
 redis:
-  host: localhost
+  host: redis
   port: 6379
   password: ""
   ttl: 5m
@@ -15,7 +15,7 @@ redis:
 kafka:
   version: 2.8.0
   auto_commit_interval: 1s
-  brokers: ["localhost:9092"]
+  brokers: ["kafka:29092"]
   order_topic: orders
   group_id: order_service_group
   retries: 3
