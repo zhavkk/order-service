@@ -190,6 +190,5 @@ curl -X GET http://localhost:8080/order/<order_uid>
 
 ### Скриншот
 ![Web Interface Screenshot](docs/order_service.jpg)
-
 ---
 
