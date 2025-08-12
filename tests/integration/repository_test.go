@@ -176,7 +176,7 @@ func setupPostgresContainer(t *testing.T) (context.Context, testcontainers.Conta
 			"POSTGRES_PASSWORD": "postgres",
 			"POSTGRES_DB":       "order_service_test",
 		},
-		WaitingFor: wait.ForListeningPort("5432/tcp"),
+		WaitingFor: wait.ForListeningPort("5432/tcp").WithStartupTimeout(60 * time.Second),
 	}
 	pgContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,

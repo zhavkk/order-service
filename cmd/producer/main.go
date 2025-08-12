@@ -29,7 +29,6 @@ func main() {
 		return
 	}
 	defer func() {
-
 		if err := producer.Close(); err != nil {
 			logger.Log.Error("Failed to close Kafka producer", "error", err)
 		}
