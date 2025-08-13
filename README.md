@@ -75,7 +75,7 @@
 ## Архитектура
     - Исходную модель данных разбил на orders, delivery, payments, items и везде навесил b-tree индексы на order_uid. Находится в migrations/....init.sql. Так же в отдельной миграции заводится пользователь. 
 
-    ```
+```
     -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE orders (
